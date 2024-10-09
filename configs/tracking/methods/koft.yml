@@ -1,0 +1,7 @@
+koft:
+  association_threshold: 7.0
+  kalman_order: 1
+  n_valid: 3
+  n_gap: 5
+  association_method: opt_smooth
+  cost: euclidean

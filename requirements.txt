@@ -1,0 +1,11 @@
+black
+byotrack
+dacite
+expyrun
+ipywidgets
+matplotlib
+mypy
+notebook
+pylint
+torch_kf
+types-tqdm

@@ -1,0 +1,16 @@
+__default__:
+  - ./default.yml
+
+name: hydra_flow
+
+simulator:
+  base_video:
+    path: $DATA_FOLDER/pasteur/hydra/movies/dupre/20140829 1.tif
+    transform:
+      aggregate: True
+      normalize: True
+      q_min: 0.02
+      q_max: 0.997
+      smooth_clip: 1.0
+    start: 800  # There is a contraction around frame 900
+    stop: 1000

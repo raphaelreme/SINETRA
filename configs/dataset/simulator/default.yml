@@ -1,0 +1,28 @@
+__new_key_policy__: pass
+
+__default__:
+  - ./particles.yml
+  - ./nam.yml
+  - ./motion.yml
+  - ./global_motion.yml
+
+simulator:
+  warm_up: 500
+  imaging_config:
+    delta: 50.0
+    noise: 0.1
+    psnr: 1.5  # SNR in db (10 log_10)
+
+  base_video:
+    path: ""
+    transform:
+      aggregate: True
+      normalize: True
+      q_min: 0.02
+      q_max: 0.997
+      smooth_clip: 1.0
+
+    start: 0
+    stop: -1
+    step: 1
+    randomise: True

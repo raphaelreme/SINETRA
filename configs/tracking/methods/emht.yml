@@ -1,0 +1,5 @@
+emht:  # See ByoTrack documentation for additional EMHTParameters
+  icy_path: $ICY
+  motion: MULTI
+  gate_factor: 4.0
+  tree_depth: 2
