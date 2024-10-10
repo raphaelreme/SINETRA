@@ -2,9 +2,10 @@ __new_key_policy__: pass
 
 __default__:
   - ./detect.yml
-  - ./methods/emht.yml
   - ./methods/trackmate.yml
+  - ./methods/emht.yml
   - ./methods/koft.yml
+  - ./methods/zephir.yml
 
 __run__:
   __main__: tracking_src.track:main
@@ -12,10 +13,12 @@ __run__:
   __output_dir__: experiment_folder/tracking/  # True output_dir is output_dir/__name__
 
 seed: 111
-simulation_name: springs/1.5-50.0/{seed}
+data_name: springs
+simulation_name: "{data_name}/1.5-50.0/{seed}"
 
 data: $EXPYRUN_CWD/dataset/{simulation_name}
 tracking_methods:
   - trackmate
   - emht
   - koft
+  - zephir

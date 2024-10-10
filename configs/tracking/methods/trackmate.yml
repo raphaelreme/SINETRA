@@ -3,5 +3,5 @@ trackmate:  # See ByoTrack documentation for additional TrackMateParameters
   allow_gap_closing: True
   max_frame_gap: 5
   linking_max_distance: 7.0
-  gap_closing_max_distance: 10.0
+  gap_closing_max_distance: 10.5
   kalman_search_radius: 7.0  # Enable kalman filter version

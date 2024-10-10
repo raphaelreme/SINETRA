@@ -1,0 +1,18 @@
+# ZephIR is very expensive, so it is hard to test many parameters
+__default__:
+  - ./trackmate.yml
+
+tracking_method: zephir
+keys:
+  - grid_step
+  - n_epoch_d
+  - lambda_n
+
+values:
+  - [11, 0, 0.1]
+  - [11, 20, 0.1]
+  # - [35, 0, 0.1]  # Slow and not worth
+  - [35, 20, 0.1]
+  - [11, 20, 0.5]
+  - [35, 20, 0.5]
+  - [35, 20, 1.0]

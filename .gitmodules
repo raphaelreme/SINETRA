@@ -1,3 +1,6 @@
 [submodule "TrackEval"]
 	path = TrackEval
 	url = git@github.com:raphaelreme/TrackEval.git
+[submodule "ZephIR"]
+	path = ZephIR
+	url = git@github.com:raphaelreme/ZephIR.git

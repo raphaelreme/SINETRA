@@ -1,0 +1,11 @@
+zephir:
+  dataset: "{data}"
+  device: cpu
+  num_annotated_frames: 10
+  grid_step: 35
+  lambda_d: 1.0
+  lambda_n: 0.5
+  lr_floor: 0.08
+  lr_ceiling: 0.15
+  n_epoch: 20
+  n_epoch_d: 20

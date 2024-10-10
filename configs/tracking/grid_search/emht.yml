@@ -1,0 +1,18 @@
+__default__:
+  - ./trackmate.yml
+
+tracking_method: emht
+keys:
+  - gate_factor
+  - termination_prob
+
+values:
+  - [3.0, 1e-4]
+  - [4.0, 1e-4]
+  - [5.0, 1e-4]
+  - [3.0, 1e-5]
+  - [4.0, 1e-5]
+  - [5.0, 1e-5]
+  - [3.0, 1e-3]
+  - [4.0, 1e-3]
+  - [5.0, 1e-3]

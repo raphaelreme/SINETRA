@@ -1,11 +1,16 @@
 black
 byotrack
 dacite
+docopt
+h5py
 expyrun
 ipywidgets
 matplotlib
 mypy
 notebook
+pandas
 pylint
+scikit-image
+scikit-learn
 torch_kf
 types-tqdm

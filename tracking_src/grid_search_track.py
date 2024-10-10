@@ -1,7 +1,14 @@
+"""Should not be used for tracking results, only for choosing the parameters
+
+Note: we limit to 10 configurations to test because on real data, testing tracking parameters
+is hard (either because the user does not know which parameters to choose, or because no ground
+truth is available and only a visual check can be made, or because it takes too much time)
+"""
+
+import copy
 import dataclasses
 import enum
 import pathlib
-import time
 from typing import List
 
 import dacite
@@ -24,12 +31,27 @@ from .utils import enforce_all_seeds
 class ExperimentConfig:
     seed: int
     data: pathlib.Path
-    tracking_methods: List[str]
+    tracking_method: str
     detection: detect.DetectionConfig
     koft: KOFTConfig
     emht: EMHTConfig
     trackmate: TrackMateConfig
     zephir: ZephIRConfig
+    keys: List[str]
+    values: List[List]
+
+
+def modify_dataclass(dataclass, keys: List[str], values: List[List]):
+    dataclass = copy.deepcopy(dataclass)
+    for key, value in zip(keys, values):
+        *attrs, final = key.split(".")
+        dataclass_ = dataclass
+        for attr in attrs:
+            dataclass_ = getattr(dataclass_, attr)
+
+        setattr(dataclass_, final, value)
+
+    return dataclass
 
 
 def main(name: str, cfg_data: dict) -> None:
@@ -69,34 +91,45 @@ def main(name: str, cfg_data: dict) -> None:
     print("Precision", tp / n_pred if n_pred else 1.0)
     print("f1", 2 * tp / (n_true + n_pred) if n_pred + n_true else 1.0)
 
-    refiner = ForwardBackwardInterpolater()
-    metrics = {}
-    for method in tqdm.tqdm(cfg.tracking_methods):
-        linker: byotrack.Linker = getattr(cfg, method).build()
+    parameters = getattr(cfg, cfg.tracking_method)
 
-        t = time.time()
+    parameters_list = [parameters] + [modify_dataclass(parameters, cfg.keys, values) for values in cfg.values]
+    if len(parameters_list) > 11:
+        raise ValueError("You should not try to much parameters. In real life this cannot be done.")
+
+    refiner = ForwardBackwardInterpolater()
+    best_values = []
+    best_parameters = parameters
+    best_hota = 0.0
+    for linker_parameters, values in zip(tqdm.tqdm(parameters_list), [[]] + cfg.values):
+        linker: byotrack.Linker = linker_parameters.build()
         try:
             tracks = linker.run(video, detections_sequence)
             tracks = refiner.run(video, tracks)  # Close gap (for u-track, EMHT)
         except Exception as exc:  # pylint: disable=broad-exception-caught
             tqdm.tqdm.write(str(exc))
             tracks = []  # Tracking failed (For instance: timeout in EMHT)
+            raise
 
-        t = time.time() - t
-
-        tqdm.tqdm.write(f"Built {len(tracks)} tracks in {t} seconds ({t / len((video))} fps)")
+        tqdm.tqdm.write(f"Built {len(tracks)} tracks")
 
         if len(tracks) == 0 or len(tracks) > ground_truth["mu"].shape[1] * 20:
-            tqdm.tqdm.write(f"{method} failed (too few or too many tracks). Continuing...")
+            tqdm.tqdm.write(f"With {cfg.keys} => {values} tracking failed (too few or too many tracks). Continuing...")
             continue
 
-        hota = tracking_metrics.compute_tracking_metrics(tracks, ground_truth)
-
         # Hota @ 2 (-8 => Thresholds is 2)
-        metrics[method] = {key: value[-8].item() for key, value in hota.items()}
-        byotrack.Track.save(tracks, f"{method}_tracks.pt")
+        hota = tracking_metrics.compute_tracking_metrics(tracks, ground_truth)["HOTA"][-8].item()
 
-        tqdm.tqdm.write(f"{method} => HOTA@2.0: {metrics[method]['HOTA']}")
+        tqdm.tqdm.write(f"With {cfg.keys} => {values},  HOTA@2.0: {hota}")
 
-    with open("metrics.yml", "w", encoding="utf-8") as file:
-        file.write(yaml.dump(metrics))
+        if hota > best_hota:
+            best_parameters = linker_parameters
+            best_values = values
+            best_hota = hota
+
+    if best_parameters != parameters:
+        print("The default configuration is sub-optimal, we found a better one:")
+        print(f"{cfg.keys} => {best_values}, HOTA@2.0: {best_hota}")
+
+    print("Best parameters:")
+    print(yaml.dump(dataclasses.asdict(best_parameters)))
