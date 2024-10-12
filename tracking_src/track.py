@@ -1,3 +1,4 @@
+import copy
 import dataclasses
 import enum
 import pathlib
@@ -69,10 +70,16 @@ def main(name: str, cfg_data: dict) -> None:
     print("Precision", tp / n_pred if n_pred else 1.0)
     print("f1", 2 * tp / (n_true + n_pred) if n_pred + n_true else 1.0)
 
+    linker: byotrack.Linker
     refiner = ForwardBackwardInterpolater()
     metrics = {}
     for method in tqdm.tqdm(cfg.tracking_methods):
-        linker: byotrack.Linker = getattr(cfg, method).build()
+        if method == "zephir-low":  # Specific behavior for zephir-low
+            cfg_ = copy.deepcopy(cfg.zephir)
+            cfg_.num_annotated_frames = 1
+            linker = cfg_.build()
+        else:
+            linker = getattr(cfg, method).build()
 
         t = time.time()
         try:
@@ -84,10 +91,15 @@ def main(name: str, cfg_data: dict) -> None:
 
         t = time.time() - t
 
-        tqdm.tqdm.write(f"Built {len(tracks)} tracks in {t} seconds ({t / len((video))} fps)")
+        tqdm.tqdm.write("\n")
+
+        # FPS are not so much fair for eMHT and TrackMate.
+        # In the paper, we manually measure the time from when the tracking in Java truly starts
+        # and up to when it truly ends, removing the python wraping time.
+        tqdm.tqdm.write(f"Built {len(tracks)} tracks in {t} seconds ({len(video) / t} fps)")
 
         if len(tracks) == 0 or len(tracks) > ground_truth["mu"].shape[1] * 20:
-            tqdm.tqdm.write(f"{method} failed (too few or too many tracks). Continuing...")
+            tqdm.tqdm.write(f"{method} failed (too few or too many tracks). Continuing...\n")
             continue
 
         hota = tracking_metrics.compute_tracking_metrics(tracks, ground_truth)
@@ -96,7 +108,7 @@ def main(name: str, cfg_data: dict) -> None:
         metrics[method] = {key: value[-8].item() for key, value in hota.items()}
         byotrack.Track.save(tracks, f"{method}_tracks.pt")
 
-        tqdm.tqdm.write(f"{method} => HOTA@2.0: {metrics[method]['HOTA']}")
+        tqdm.tqdm.write(f"{method} => HOTA@2.0: {metrics[method]['HOTA']}\n")
 
     with open("metrics.yml", "w", encoding="utf-8") as file:
         file.write(yaml.dump(metrics))

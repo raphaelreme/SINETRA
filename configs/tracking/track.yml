@@ -22,3 +22,4 @@ tracking_methods:
   - emht
   - koft
   - zephir
+  - zephir-low   # ZephIR with less annotated images (Note that trackmate, emht and koft don't use any annotations)
