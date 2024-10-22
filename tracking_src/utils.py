@@ -17,4 +17,4 @@ def enforce_all_seeds(seed: int, strict=True):
 
     if strict:
         torch.backends.cudnn.benchmark = False  # By default should already be to False
-        torch.use_deterministic_algorithms(True)
+        torch.use_deterministic_algorithms(True, warn_only=True)

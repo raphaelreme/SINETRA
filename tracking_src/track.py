@@ -76,7 +76,7 @@ def main(name: str, cfg_data: dict) -> None:
     for method in tqdm.tqdm(cfg.tracking_methods):
         if method == "zephir-low":  # Specific behavior for zephir-low
             cfg_ = copy.deepcopy(cfg.zephir)
-            cfg_.num_annotated_frames = 1
+            cfg_.num_annotated_frames = 3
             linker = cfg_.build()
         else:
             linker = getattr(cfg, method).build()

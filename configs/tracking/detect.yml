@@ -3,7 +3,7 @@ detection:
   wavelet:
     k: 2.5
     scale: 1
-    min_area: 8.0
+    min_area: 7.5
   fake:
     fpr: 0.2
     fnr: 0.2

@@ -1,6 +1,6 @@
 zephir:
   dataset: "{data}"
-  device: cpu
+  device: cuda
   num_annotated_frames: 10
   grid_step: 35
   lambda_d: 1.0

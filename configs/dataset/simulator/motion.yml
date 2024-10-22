@@ -6,10 +6,10 @@ simulator:
       - flow_motion
     shape_variation:
       period: 50.0
-      noise: 0.1
+      noise: 0.05  # ~ 5% size std (in proportion)
     local_rotation:
       period: 50.0
-      noise: 0.05  # ~ 3 deg
+      noise: 0.1  # ~ 5° angle std (pi / 30)
     brownian_rotation:
       noise: 0.0
     flow_motion:

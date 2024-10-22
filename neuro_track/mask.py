@@ -1,38 +1,63 @@
-import cv2
+from typing import Tuple
+
 import numpy as np
+import scipy.ndimage as ndi  # type: ignore
 import torch
 
 from . import random
 
 
-def random_mask(size=1024, verbose=False) -> torch.Tensor:
+def random_mask(shape: Tuple[int, ...] = (1024, 1024), verbose=False) -> torch.Tensor:
     """Generate a random ellipse mask roughly centered in the middle
 
     Args:
-        size (int): Size of the image.
-            Default: 1024
+        shape (Tuple[int, ...]): Size of the image.
+            Default: (1024, 1024)
         verbose (bool): If True print the true area versus the sampled area
 
     Returns:
-        torch.Tensor: 2D boolean mask
-            Shape: (1024, 1024), dtype: bool
+        torch.Tensor: Boolean mask
+            Shape: shape, dtype: bool
 
     """
-    thresh = 1 / np.sqrt(2 * np.pi) ** 2 * np.exp(-1 / 2)  # Thresh at 1 sigma (1 mahalanohobis)
+    # Maths:
+    # A_2d = pi * a * b
+    # A_3d = 4/3 pi * a * b * c
+    # b = ratio[1] * a, c = ratio[2] * a
+    # let's call r the biggest possible ratio (and 1/r the smallest one)
+    # Then the largest possible axe is
+    # a_max_2d = (A_2d / pi * r).pow(1/2)
+    # a_max_3d = (A_3d / pi * r.pow(3) * 3/4).pow(1/3)
+    # We choose A and r so that a_max < 0.5
+    dim = len(shape)
+    assert dim in (2, 3)
+
+    shape_pt = torch.tensor(shape)
+
     mask_area = torch.rand(1, generator=random.particle_generator).item() * 0.15 + 0.2  # [0.2, 0.35]
-    ratio = 0.5 + 1.5 * torch.rand(1, generator=random.particle_generator).item()  # [0.5, 2]
+    if dim == 3:
+        # The volume of the ellipse vs square is 2/3 smaller in 3D than in 2D.
+        # This is still not enough to prevent the radius to be too large (see maths)
+        mask_area *= 1 / 2  # [0.1, 0.17]
 
-    mean = size / 2 + torch.randn(2, generator=random.particle_generator) * size / 60
+    ratios = torch.ones(dim)
+    ratios[1:] = 0.5 + 1.5 * torch.rand(dim - 1, generator=random.particle_generator)  # [0.5, 2]
+    if dim == 3:
+        ratios.sqrt_()  # So that the smallest ratio possible vs the largest one is still at a ratio 2
 
-    std = torch.tensor([mask_area * ratio / torch.pi, mask_area / ratio / torch.pi]).sqrt() * size
+    mean = shape_pt / 2 + torch.randn(len(shape), generator=random.particle_generator) * shape_pt / 60
 
-    distribution = torch.distributions.Normal(mean, std)
+    # 4/3 pi abc in 3D vs pi ab in 2D
+    coef = 4 / 3 * np.pi if dim == 3 else np.pi
+    std = (mask_area / coef / torch.prod(ratios)).pow(1 / dim)
+    std = std * ratios
+    std = std * torch.prod(torch.tensor(shape)).pow(1 / dim)
 
-    indices = torch.tensor(np.indices((size, size)), dtype=torch.float32).permute(1, 2, 0)
-    prob = distribution.log_prob(indices).sum(dim=2).exp() * std.prod()
+    indices = torch.tensor(np.indices(shape), dtype=torch.float32).permute(*range(1, dim + 1), 0)
+    mask = ((indices - mean) / std).pow(2).sum(dim=-1) <= 1
 
-    mask = prob > thresh
     if verbose:
+        print(mean, std)
         print(mask.sum() / mask.numel(), mask_area)
 
     return mask
@@ -45,14 +70,14 @@ def mask_from_frame(frame: np.ndarray) -> torch.Tensor:
 
     Args:
         frame (np.ndarray): Frame of the video
-            Shape: (H, W, 1), dtype: float
+            Shape: ([D, ]H, W, 1), dtype: float
 
     Returns:
-        torch.Tensor: 2D boolean mask
-            Shape: (H, W), dtype: bool
+        torch.Tensor: Boolean mask
+            Shape: ([D, ]H, W), dtype: bool
     """
     # First blur the image
-    frame = cv2.GaussianBlur(frame[..., 0], (35, 35), 10.0, 10.0)  # type: ignore
+    frame = ndi.gaussian_filter(frame[..., 0], [10.0] * (frame.ndim - 1))
 
     # Limit the search to threshold resulting in 10 to 40% of the image
     mini = int((np.quantile(frame, 0.6) * 100).round())

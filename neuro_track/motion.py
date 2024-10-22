@@ -10,7 +10,7 @@ import torch_tps
 from . import optical_flow
 from . import random
 from . import springs
-from .particle import GaussianParticles
+from .particle import GaussianParticles, _build_rot_2d, _build_rot_3d
 
 
 @dataclasses.dataclass
@@ -360,77 +360,88 @@ class GlobalMotionConfig:
     noise_position: float = 0.0
     noise_theta: float = 0.0
 
+    def build(self, particles: GaussianParticles) -> "GlobalDriftAndRotation":
+        return GlobalDriftAndRotation(particles.mu.mean(dim=0), self.period, self.noise_position, self.noise_theta)
+
 
 class GlobalDriftAndRotation:
     """Global drift and rotation for all particles (Rigid motion)
 
-    Note: With the current bad implementation, i'm not able to make this fit with other motions.
-    Lets not make it inherit Motion and be given independently to the simulator
+    Note: As it also plays with particles positions and angles at the same time as LocalRotation
+          or ElasticMotion, it is designed to be reversible and applied just for imaging.
 
     Drift follow a spring (prevent all the particles to go out of focus) with a large period (slow vs the local motion)
-
     Rotation is also a spring (more for continuous reason) with the same period
+
+    The operation is an affine transformation, in homegenous coordinates it can be written as:
+    A = |R T|, where R is the rotation matrix (2D or 3D) and T the translation.
+        |0 1|
+
+    Here, we first do a rotation around the center of mass, then a translation to apply the transformation.
     """
 
     def __init__(self, mass_center: torch.Tensor, period=1000.0, noise_position=0.0, noise_theta=0.0) -> None:
         super().__init__()
-        self.spring = springs.RandomAcceleratedSpring.build(
-            torch.cat((mass_center, torch.ones(1))),
+        self.dim = mass_center.shape[0]
+        self.translation_spring = springs.RandomAcceleratedSpring.build(
+            torch.zeros_like(mass_center),
             torch.tensor([0.5]),
-            torch.tensor([noise_position, noise_position, noise_theta]),
+            torch.ones_like(mass_center) * noise_position,
             torch.tensor(2 * torch.pi / period),
         )
-        self.global_theta = torch.tensor(0.0)
-        self.global_translation = torch.tensor([0.0, 0.0])
+        self.rotation_spring = springs.RandomAcceleratedSpring.build(
+            torch.zeros(1 if self.dim == 2 else 3),
+            torch.tensor([0.5]),
+            torch.full((1 if self.dim == 2 else 3,), noise_theta),
+            torch.tensor(2 * torch.pi / period),
+        )
+        self.mass_center = mass_center
 
     @property
-    def transformation(self) -> torch.Tensor:
-        return torch.tensor(
-            [
-                [torch.cos(self.global_theta), -torch.sin(self.global_theta), self.global_translation[0]],
-                [torch.sin(self.global_theta), torch.cos(self.global_theta), self.global_translation[1]],
-                [0.0, 0.0, 1.0],
-            ]
-        )
+    def translation(self) -> torch.Tensor:
+        return self.translation_spring.value
+
+    @property
+    def theta(self) -> torch.Tensor:
+        return self.rotation_spring.value
+
+    @property
+    def affine(self) -> torch.Tensor:
+        if self.dim == 2:
+            rotation = _build_rot_2d(self.theta[None])[0]
+        else:
+            rotation = _build_rot_3d(self.theta[None])[0]
+
+        # The true translation is the translation induced by the rotation plus the actual translation
+        translation = self.translation + self.mass_center - rotation @ self.mass_center
+
+        affine = torch.eye(self.dim + 1)
+        affine[: self.dim, : self.dim] = rotation
+        affine[: self.dim, self.dim] = translation
+        return affine
 
     def update(self) -> None:
-        old_state = self.spring.value.clone()
-        self.spring.update()
-        # Add to translation the new motion of the center of mass
-        self.global_translation += self.spring.value[:2] - old_state[:2]
-
-        # New rotation=
-        theta = self.spring.value[2] - old_state[2]
-        rotation = torch.tensor(
-            [
-                [torch.cos(theta), -torch.sin(theta)],
-                [torch.sin(theta), torch.cos(theta)],
-            ]
-        )
-
-        self.global_translation -= self.spring.value[:2]
-        self.global_translation = rotation @ self.global_translation
-        self.global_translation += self.spring.value[:2]
-        self.global_theta += theta
+        self.translation_spring.update()
+        self.rotation_spring.update()
 
     def apply(self, particles: GaussianParticles) -> None:
         particles.mu = self.apply_tensor(particles.mu)
+        particles.theta += self.theta
 
     def apply_tensor(self, points: torch.Tensor) -> torch.Tensor:
-        homogenous = torch.cat((points, torch.ones(points.shape[0])[:, None]), dim=-1)  # N, 3
-        homogenous = homogenous @ self.transformation.T
+        homogeneous = torch.ones((points.shape[0], self.dim + 1))
+        homogeneous[:, : self.dim] = points
+        homogeneous = homogeneous @ self.affine.T
 
-        return homogenous[:, :2]
+        return homogeneous[:, : self.dim]
 
     def revert(self, particles: GaussianParticles) -> None:
         particles.mu = self.revert_tensor(particles.mu)
+        particles.theta -= self.theta
 
     def revert_tensor(self, points: torch.Tensor) -> torch.Tensor:
-        transformation_inv = self.transformation
-        transformation_inv[:2, :2] = transformation_inv[:2, :2].clone().T
-        transformation_inv[:2, 2] = -transformation_inv[:2, :2] @ transformation_inv[:2, 2]
+        homogeneous = torch.ones((points.shape[0], self.dim + 1))
+        homogeneous[:, : self.dim] = points
+        homogeneous = homogeneous @ torch.inverse(self.affine).T
 
-        homogenous = torch.cat((points, torch.ones(points.shape[0])[:, None]), dim=-1)  # N, 3
-        homogenous = homogenous @ transformation_inv.T
-
-        return homogenous[:, :2]
+        return homogeneous[:, : self.dim]

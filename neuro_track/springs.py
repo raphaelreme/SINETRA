@@ -2,8 +2,8 @@ import math
 from typing import Callable, Tuple
 import warnings
 
-import cv2
 import numpy as np
+import scipy.ndimage as ndi  # type: ignore
 import torch
 
 from . import random
@@ -399,17 +399,30 @@ class RandomRelationalSprings:
 
     @staticmethod
     def grid_springs_from_mask(mask: torch.Tensor, grid_step: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        max_neighbors = 8
+        """Sample a control points and neighbors from a boolean mask
+
+        Control points are sampled as a grid with a step `grid_step`.
+        Neoghbors are the 8 (resp. 26 in 3D) control points (if defined).
+        """
+        max_neighbors = 8 if mask.ndim == 2 else 26
         max_dist = grid_step * 2 - 1  # Less than 2 grid step
-        size = mask.shape[0]
         points = (
-            torch.tensor(np.indices((1 + size // grid_step, 1 + size // grid_step))).permute(1, 2, 0).reshape(-1, 2)
+            torch.tensor(np.indices(tuple(size // grid_step for size in mask.shape)))
+            .permute(*range(1, mask.ndim + 1), 0)
+            .reshape(-1, mask.ndim)
             * grid_step
         )
 
         # Extend the mask and take only the points in the extended mask
-        mask = torch.tensor(cv2.dilate(mask.numpy().astype(np.uint8), np.ones((grid_step // 3, grid_step // 3)))) > 0
-        points = points[mask[points[:, 0], points[:, 1]]].to(torch.float32)
+        mask = torch.tensor(
+            ndi.binary_dilation(
+                mask.numpy(), ndi.generate_binary_structure(mask.ndim, mask.ndim), iterations=grid_step // 5
+            )
+        )
+        if mask.ndim == 2:
+            points = points[mask[points[:, 0], points[:, 1]]].to(torch.float32)
+        else:
+            points = points[mask[points[:, 0], points[:, 1], points[:, 2]]].to(torch.float32)
 
         cdist = torch.cdist(points, points, compute_mode="donot_use_mm_for_euclid_dist")
         neighbors = cdist.argsort(dim=1)[:, 1 : 1 + max_neighbors]

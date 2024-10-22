@@ -47,27 +47,25 @@ def load_results(
 
 
 def main():
-    motions = {"springs": "Springs", "hydra_flow": "Hydra Flow"}
+    motions = ["hydra_flow", "springs"]
     detection_methods = ["Wavelet", "Fake@80%"]
     tracking_methods = {
         "trackmate": "U-Track",
         "emht": "eMHT",
         "koft": "KOFT",
+        "zephir-low": "ZephIR@3",
         "zephir": "ZephIR@10",
-        "zephir-low": "ZephIR@1",
     }
 
     # Get results
-    results = load_results(
-        pathlib.Path("experiment_folder"), list(motions.keys()), list(tracking_methods.keys()), detection_methods
-    )
+    results = load_results(pathlib.Path("experiment_folder"), motions, list(tracking_methods.keys()), detection_methods)
 
     det_n = max(max(len(det) for det in detection_methods), 20)
     trk_n = max(max(len(trk) for trk in tracking_methods.values()), 10)
     mtn_n = det_n * len(detection_methods) + len(detection_methods) - 1
 
     # Header:
-    print(f"{'':^{trk_n}}|{'Springs':^{mtn_n}}|{'Flow':^{mtn_n}}")
+    print("|".join([f"{'':^{trk_n}}"] + [f"{motion:^{mtn_n}}" for motion in motions]))
     print("-" * (mtn_n * len(motions) + trk_n + len(motions)))
     detection_line = [f"{'Detection':^{trk_n}}"]
     for motion in motions:

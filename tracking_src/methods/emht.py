@@ -15,4 +15,4 @@ class EMHTConfig(icy_emht.EMHTParameters):
     icy_path = pathlib.Path(os.environ.get("ICY", ""))
 
     def build(self) -> icy_emht.IcyEMHTLinker:
-        return icy_emht.IcyEMHTLinker(self.icy_path, self, timeout=120)  # Prevent infinte loops
+        return icy_emht.IcyEMHTLinker(self.icy_path, self, timeout=300)  # Prevent infinite loops

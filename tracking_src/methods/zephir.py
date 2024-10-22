@@ -51,7 +51,7 @@ class ZephIRLinker(byotrack.Linker):
     def __init__(self, specs: ZephIRParameters, dataset: pathlib.Path, num_annotated_frames=1, verbose=False):
         super().__init__()
         self.dataset = dataset
-        self.device = "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.specs = specs
         self.verbose = verbose
 

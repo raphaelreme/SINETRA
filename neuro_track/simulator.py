@@ -91,7 +91,7 @@ class Simulator:
         imaging_config: ImagingConfig,
     ):
         self.background = background
-        self.background_gain = background.draw_truth(scale=4).max().item() if background else 1.0
+        self.background_gain = background.draw_truth(scale=4).max().item() * 1.1 if background else 1.0
         self.particles = particles
 
         self.emission_model = emission_model
@@ -105,6 +105,7 @@ class Simulator:
         if self.background:
             background = self.background.draw_truth(scale=4)
             background /= self.background_gain
+            background.clip_(0.0, 1.0)
             background = (
                 1 - self.imaging_config.noise
             ) * background + self.imaging_config.noise  # Add a noise baseline

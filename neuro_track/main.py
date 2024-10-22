@@ -64,7 +64,7 @@ def main(name: str, cfg_data: dict) -> None:
             frame_saved = False
             frame = simulator.generate_image().numpy()
             segmentation = simulator.particles.get_tracks_segmentation().numpy().astype(np.uint16)
-            # Add axes to match imagej tiff default format: TZCXY
+            # Add axes to match imagej tiff default format: TZCYX
             if segmentation.ndim == 2:
                 segmentation = segmentation[None, None, None, ..., None]
             else:
