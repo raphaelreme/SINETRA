@@ -13,8 +13,9 @@ __run__:
   __output_dir__: experiment_folder/tracking_grid_search/  # True output_dir is output_dir/__name__
 
 seed: 111
-data_name: springs
-simulation_name: "{data_name}/1.5-50.0/{seed}"
+data_name: springs_2d
+simulation_name: "{data_name}/0.2-50.0/{seed}"
+num_frames: 50  # Evaluate only on a fourth of the sequence (fine for springs motions)
 
 data: $EXPYRUN_CWD/dataset/{simulation_name}
 tracking_method: trackmate

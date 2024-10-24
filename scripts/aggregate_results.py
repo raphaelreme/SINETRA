@@ -17,7 +17,7 @@ def load_results(
         for tracking_method in tracking_methods
     }
     for motion in motions:
-        for path in glob.glob(str(exp_folder / "tracking" / f"{motion}" / "1.5-50.0" / "*" / "*")):
+        for path in glob.glob(str(exp_folder / "tracking" / f"{motion}" / "0.2-50.0" / "*" / "*")):
             if not (pathlib.Path(path) / "metrics.yml").exists():
                 continue  # Run has not finished
 
@@ -47,8 +47,8 @@ def load_results(
 
 
 def main():
-    motions = ["hydra_flow", "springs"]
-    detection_methods = ["Wavelet", "Fake@80%"]
+    motions = ["hydra_flow", "springs_2d", "springs_3d"]
+    detection_methods = ["Wavelet"]
     tracking_methods = {
         "trackmate": "U-Track",
         "emht": "eMHT",

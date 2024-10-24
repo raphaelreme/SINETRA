@@ -1,7 +1,16 @@
 koft:
   association_threshold: 7.0
   kalman_order: 1
+  flow_std: 1.0
   n_valid: 3
-  n_gap: 5
+  n_gap: 7
   association_method: opt_smooth
   cost: euclidean
+  optical_flow:
+    name: farneback
+    downscale: 4
+    farneback:
+      win_size: 20
+    tvl1:
+      attachment: 5.0
+      num_warp: 2

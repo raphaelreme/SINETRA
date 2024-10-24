@@ -43,7 +43,7 @@ class DetectionConfig:
 
     def create_detector(self, mu: torch.Tensor) -> byotrack.Detector:
         if self.detector == DetectionMethod.WAVELET:
-            return WaveletDetector(self.wavelet.scale, self.wavelet.k, self.wavelet.min_area)
+            return WaveletDetector(self.wavelet.scale, self.wavelet.k, self.wavelet.min_area, batch_size=5)
 
         return FakeDetector(mu, self.fake.measurement_noise, self.fake.fpr, self.fake.fnr, False)
 
@@ -65,6 +65,7 @@ class FakeDetector(byotrack.Detector):  # TODO: include weight, std and theta to
 
     def run(self, video):
         detections_sequence = []
+        dim = self.mu.shape[-1]
 
         for k, frame in enumerate(tqdm.tqdm(video)):
             frame = frame[..., 0]  # Drop channel
@@ -73,7 +74,7 @@ class FakeDetector(byotrack.Detector):  # TODO: include weight, std and theta to
             detected = torch.rand(self.n_particles) >= self.fnr  # Miss some particles (randomly)
 
             idx = torch.arange(self.n_particles)[detected]
-            positions = self.mu[k, detected] + torch.randn((detected.sum(), 2)) * self.noise
+            positions = self.mu[k, detected] + torch.randn((detected.sum(), dim)) * self.noise
 
             valid = torch.logical_and((positions > 0).all(dim=-1), (positions < shape - 1).all(dim=-1))
             positions = positions[valid]
@@ -86,10 +87,15 @@ class FakeDetector(byotrack.Detector):  # TODO: include weight, std and theta to
 
             # 2- Scale fpr by the mask proportion
             n_fake = int(len(positions) * (self.fpr + torch.randn(1).item() * self.fpr / 10) / mask_proportion)
-            false_alarm = torch.rand(n_fake, 2) * (shape - 1)
+            false_alarm = torch.rand(n_fake, dim) * (shape - 1)
 
             if not self.generate_outside_particles:  # Filter fake detections outside the mask
-                false_alarm = false_alarm[mask[false_alarm.long()[:, 0], false_alarm.long()[:, 1]]]
+                if dim == 2:
+                    false_alarm = false_alarm[mask[false_alarm.long()[:, 0], false_alarm.long()[:, 1]]]
+                else:
+                    false_alarm = false_alarm[
+                        mask[false_alarm.long()[:, 0], false_alarm.long()[:, 1], false_alarm.long()[:, 2]]
+                    ]
 
             positions = torch.cat((positions, false_alarm))
 

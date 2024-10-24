@@ -2,11 +2,18 @@
 __default__:
   - ./trackmate.yml
 
+# NOTE: Zeph is better with larger detections (smaller k)
+# because it is only sensible to the mask and not the segmentation.
+# In the scripts we run Zeph on its own with a k = 1.0 (vs 2.5) in 2D and 4.0 (vs 6.0) in 3D
+detection:
+  wavelet:
+    k: 1.0
+
 tracking_method: zephir
 keys:
-  - grid_step
-  - n_epoch_d
-  - lambda_n
+  - grid_step  # In 3D, let's only use 11 it is too slow and 35 is not even better
+  - n_epoch_d  # Really useful
+  - lambda_n  # In 2D, it seems that a large value is okay (~0.5) but in 3D 0.01 is much better.
 
 values:
   - [11, 0, 0.1]

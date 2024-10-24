@@ -1,0 +1,30 @@
+__new_key_policy__: pass
+
+__default__:
+  - ./detect.yml
+
+__run__:
+  __main__: tracking_src.grid_search_detect:main
+  __name__: "{simulation_name}"
+  __output_dir__: experiment_folder/grid_search_detect/  # True output_dir is output_dir/__name__
+
+seed: 111
+data_name: springs_2d
+simulation_name: "{data_name}/0.2-50.0/{seed}"
+
+data: $EXPYRUN_CWD/dataset/{simulation_name}
+
+step: 4 
+
+scales:
+  - 1
+
+k:
+  - 1.5  # Very slow/heavy in 3D (too many spots detected)
+  - 2.5
+  - 3.0
+  - 3.5
+  - 4.0
+  - 4.5
+  - 5.0
+  - 6.0

@@ -13,13 +13,13 @@ __run__:
   __output_dir__: experiment_folder/tracking/  # True output_dir is output_dir/__name__
 
 seed: 111
-data_name: springs
-simulation_name: "{data_name}/1.5-50.0/{seed}"
+data_name: springs_2d
+simulation_name: "{data_name}/0.2-50.0/{seed}"
 
 data: $EXPYRUN_CWD/dataset/{simulation_name}
 tracking_methods:
   - trackmate
   - emht
   - koft
-  - zephir
+  - zephir  # NOTE: Zeph is better with larger detections (smaller k), because it is only sensible to the mask and not the segmentation. In the scripts we run Zeph on its own.
   - zephir-low   # ZephIR with less annotated images (Note that trackmate, emht and koft don't use any annotations)

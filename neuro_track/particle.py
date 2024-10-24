@@ -193,7 +193,7 @@ def torch_gmm_pdf(
     This exploits gpu/cpu parallelization and computes the pdf only inside a valid gate based on l1 distance.
     It directly sums the pdf of each gaussian, without storing them in ram.
 
-    Nonetheless, it computes the l1 norm between each pixel and each gaussian.
+    Nonetheless, it computes the l2 norm between each pixel and each gaussian.
 
     Args:
         indices (torch.Tensor): Indices where to compute the pdf
@@ -204,7 +204,7 @@ def torch_gmm_pdf(
             Shape: (n, d, d), dtype: float32
         weight (torch.Tensor): Weight of each gaussian components
             Shape: (n,), dtype: float32
-        thresholds (torch.Tensor): Threshold on the l_inf distance when to skip computation
+        thresholds (torch.Tensor): Threshold on the l2 distance when to skip computation
             Shape: (n,), dtype: float32
 
     Returns:
@@ -217,13 +217,14 @@ def torch_gmm_pdf(
     mu = mu.to(device)
     precision = precision.to(device)
     weight = weight.to(device)
+    thresholds = thresholds.to(device) ** 2
 
     n = mu.shape[0]
     m = indices.shape[0]
     pdf = torch.zeros((m,), dtype=torch.float32, device=device)
     for i in range(n):
         delta = indices - mu[i]
-        valid = delta.abs().max(dim=1) < thresholds[i]
+        valid = delta.pow(2).sum(dim=-1) < thresholds[i]
         delta = delta[valid]
         pdf[valid] += weight[i] * torch.exp(-0.5 * delta[:, None] @ precision[i] @ delta[..., None])[:, 0, 0]
     return pdf
@@ -242,7 +243,7 @@ def numba_gmm_pdf_2d(
     each component the prob) moreover they compute the true pdf which is more expensive.
 
     This exploits cpu parallelization and computes the pdf only inside a valid gate. It allows not compute
-    the l1 norm for each pixel and each gaussian, reducing computationnal cost when particles are smalls.
+    the l2 norm for each pixel and each gaussian, reducing computationnal cost when particles are smalls.
     But it only works for 2D images, by computing the value for every pixel (scaled).
 
     Args:
@@ -560,7 +561,7 @@ class GaussianParticles:
         """
         dist = _fast_mahalanobis_pdist(
             self.mu.numpy(),
-            self._distribution.precision_matrix.contiguous().numpy(),
+            self._distribution.precision_matrix.mT.numpy(),  # precision.T = precision and is contiguous
             min_dist * self.std.max().item() * 2,
         )
         valid = _fast_valid(dist, min_dist)
@@ -629,7 +630,7 @@ class GaussianParticles:
             image = ndi.gaussian_filter(image, [blur] * self.dim)
         return torch.tensor(image) / n
 
-    def draw_poisson(self, dt=100.0, scale=1) -> torch.Tensor:
+    def draw_poisson(self, dt=100.0, scale=1, k=3.0, mode="auto") -> torch.Tensor:
         """Draw from ground truth with Poisson Shot noise
 
         Args:
@@ -637,15 +638,22 @@ class GaussianParticles:
                 Default: 100.0
             scale (int): Down scaling to compute true pdf
                 Default: 1
+            k (float): Cut computations at k stds when computing the true pdf.
+                Default: 3.0
+            mode (str): Computations mode for the true pdf.
+                "auto": Choose automatically between "torch" or "numba"
+                "torch": Use pytorch implem (fast when a gpu is available)
+                "numba": Use numba implem (fast when particles are small before the number of pixels)
+                Default: "auto"
 
         Returns:
             torch.Tensor: Image of the particles
                 Shape: (H, W), dtype: float32
         """
 
-        return torch.poisson(dt * self.draw_truth(scale), generator=random.imaging_generator) / dt
+        return torch.poisson(dt * self.draw_truth(scale, k, mode), generator=random.imaging_generator) / dt
 
-    def draw_truth(self, scale=1) -> torch.Tensor:
+    def draw_truth(self, scale=1, k=3.0, mode="auto") -> torch.Tensor:
         """Draw the ground truth image, where the intensities are the pdf of the mixture of gaussians
 
         I(x) = \\sum_i w_i N(x; \\mu_i, \\Sigma_i)
@@ -653,32 +661,49 @@ class GaussianParticles:
         Args:
             scale (int): Downscale the image to make the computation faster (The output is interpolated)
                 Default: 1
+            k (float): Cut computations at k stds. (Used to compute a threshold on the l2 distance to prevent
+                useless computations)
+                Default: 3.0 (Neglect pixels in the border of the particles with values < exp(-1/2 3**2) ~ 0.01)
+            mode (str): Computations mode.
+                "auto": Choose automatically between "torch" or "numba"
+                "torch": Use pytorch implem (fast when a gpu is available)
+                "numba": Use numba implem (fast when particles are small before the number of pixels)
+                Default: "auto"
 
         Returns:
             torch.Tensor: Pdf of the particles
                 Shape: (H, W), dtype: float32
         """
-        # Old method with pytorch, can be a bit faster for background particles which are large
-        # indices = torch.tensor(np.indices((self.size[0] // scale, self.size[1] // scale)))
-        # indices = indices.permute(1, 2, 0).to(torch.float32) * scale
+        # Draw using pytorch for large particles before the total number of pixels.
+        if mode == "torch" or mode == "auto" and (2 * k * self.std.max()) ** self.dim > np.prod(self.size) * 0.01:
+            indices = torch.tensor(np.indices(tuple(size // scale for size in self.size), dtype=np.float32))
+            indices = indices.permute(*range(1, self.dim + 1), 0) * scale
 
-        # truth = torch_gmm_pdf(
-        #     indices.reshape(-1, 2),
-        #     self.mu,
-        #     self._distribution.precision_matrix.contigous(),
-        #     self.weight,
-        #     self.std.max(dim=-1).values * 4,
-        # ).cpu()  # Limit to 4 times the std
+            truth = torch_gmm_pdf(
+                indices.reshape(-1, self.dim),
+                self.mu,
+                self._distribution.precision_matrix.mT,  # precision.T = precision and is contiguous
+                self.weight,
+                self.std.max(dim=-1).values * k,
+            )
+
+            return torch.nn.functional.interpolate(
+                truth.reshape((1, 1, *(size // scale for size in self.size))),
+                size=self.size,
+                mode="bilinear" if self.dim == 2 else "trilinear",
+            )[0, 0].cpu()
+
+        # Numba mode
         if self.dim == 2:
             truth = torch.tensor(
                 numba_gmm_pdf_2d(
                     self.size,
                     self.mu.numpy(),
-                    self._distribution.precision_matrix.contiguous().numpy(),
+                    self._distribution.precision_matrix.mT.numpy(),  # precision.T = precision and is contiguous
                     self.weight.numpy(),
-                    self.std.numpy().max(axis=-1) * 3,
+                    self.std.numpy().max(axis=-1) * k,
                     scale=scale,
-                )  # Limit to 3 times the std (at most 1% missing)
+                )
             )
 
             return torch.nn.functional.interpolate(
@@ -690,11 +715,11 @@ class GaussianParticles:
             numba_gmm_pdf_3d(
                 self.size,
                 self.mu.numpy(),
-                self._distribution.precision_matrix.contiguous().numpy(),
+                self._distribution.precision_matrix.mT.numpy(),  # precision.T = precision and is contiguous
                 self.weight.numpy(),
-                self.std.numpy().max(axis=-1) * 3,
+                self.std.numpy().max(axis=-1) * k,
                 scale=scale,
-            )  # Limit to 3 times the std (at most 1% missing)
+            )
         )
 
         return torch.nn.functional.interpolate(
@@ -719,7 +744,7 @@ class GaussianParticles:
                 _fast_segmentation_2d(
                     self.size,
                     self.mu.numpy(),
-                    self._distribution.precision_matrix.contiguous().numpy(),
+                    self._distribution.precision_matrix.mT.numpy(),
                     self.std.numpy().max(axis=-1) * np.float32(np.sqrt(-2 * np.log(min_value * 0.9))),
                     min_value,
                 )
@@ -728,7 +753,7 @@ class GaussianParticles:
             _fast_segmentation_3d(
                 self.size,
                 self.mu.numpy(),
-                self._distribution.precision_matrix.contiguous().numpy(),
+                self._distribution.precision_matrix.mT.numpy(),
                 self.std.numpy().max(axis=-1) * np.float32(np.sqrt(-2 * np.log(min_value * 0.9))),
                 min_value,
             )

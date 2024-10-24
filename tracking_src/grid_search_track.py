@@ -37,6 +37,7 @@ class ExperimentConfig:
     emht: EMHTConfig
     trackmate: TrackMateConfig
     zephir: ZephIRConfig
+    num_frames: int
     keys: List[str]
     values: List[List]
 
@@ -67,8 +68,10 @@ def main(name: str, cfg_data: dict) -> None:
 
     enforce_all_seeds(cfg.seed)
 
-    video = data.open_video(cfg.data)
+    video = data.open_video(cfg.data)[: cfg.num_frames]
     ground_truth = data.load_ground_truth(cfg.data)
+    ground_truth["mu"] = ground_truth["mu"][: cfg.num_frames]
+    ground_truth["weight"] = ground_truth["weight"][:, cfg.num_frames]
 
     # Detections
     detector = cfg.detection.create_detector(ground_truth["mu"])
@@ -78,9 +81,9 @@ def main(name: str, cfg_data: dict) -> None:
     tp = 0.0
     n_pred = 0.0
     n_true = 0.0
-    for detections in detections_sequence:
-        det_metrics = detection_metrics.DetectionMetric(1.5).compute_at(
-            detections, ground_truth["mu"][detections.frame_id], ground_truth["weight"][detections.frame_id]
+    for i, detections in enumerate(detections_sequence):
+        det_metrics = detection_metrics.DetectionMetric(2.0).compute_at(
+            detections, ground_truth["mu"][i], ground_truth["weight"][i]
         )
         tp += det_metrics["tp"]
         n_pred += det_metrics["n_pred"]

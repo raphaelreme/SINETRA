@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Optional
+from typing import Optional, Tuple
 
 import torch
 
@@ -18,12 +18,15 @@ class ImagingConfig:
 
     Attributes:
         delta (float): Integration time (Controls the poisson shot noise on the image)
-        psnr (float): Peak Signal to Noise Ratio (Controls the intensity of the particles over the background)
+        alpha (float): Ponderation of particles over background (Linearly mixed: I = aP + (1-a)B)
         noise (float): Noise baseline to add to the background (even outside of the background)
     """
 
+    # psnr (float): Peak Signal to Noise Ratio (Controls the intensity of the particles over the background)
+
     delta: float = 100.0
-    psnr: float = 1.5
+    alpha: float = 0.2
+    # psnr: float = 1.5
     noise: float = 0.1
 
 
@@ -65,6 +68,7 @@ class SimulatorConfig:
     Configure the whole simulator with imaging, particles, background, motion and emission models.
     """
 
+    shape: Tuple[int, ...]
     base_video: VideoConfig
     imaging_config: ImagingConfig
     particle: GaussianParticlesConfig
@@ -89,10 +93,14 @@ class Simulator:
         motion: MultipleMotion,
         global_motion: Optional[GlobalDriftAndRotation],
         imaging_config: ImagingConfig,
+        background_gain: Optional[float] = None,
     ):
-        self.background = background
-        self.background_gain = background.draw_truth(scale=4).max().item() * 1.1 if background else 1.0
         self.particles = particles
+        self.background = background
+        if background_gain is None:
+            self.background_gain = background.draw_truth(scale=4).max().item() if background else 1.0
+        else:
+            self.background_gain = background_gain
 
         self.emission_model = emission_model
         self.motion = motion
@@ -112,11 +120,11 @@ class Simulator:
         else:
             background = self.imaging_config.noise * torch.ones_like(particles)
 
-        snr = 10 ** (self.imaging_config.psnr / 10)
-        alpha = (snr - 1) / (
-            snr - 1 + 1 / 0.6
-        )  # Uses E[B(z_p)] = 0.6 and assume that the Poisson Shot noise is negligeable in the SNR
-        baseline = (1 - alpha) * background + alpha * particles
+        # snr = 10 ** (self.imaging_config.psnr / 10)
+        # alpha = (snr - 1) / (
+        #     snr - 1 + 1 / 0.6
+        # )  # Uses E[B(z_p)] = 0.6 and assume that the Poisson Shot noise is negligeable in the SNR
+        baseline = (1 - self.imaging_config.alpha) * background + self.imaging_config.alpha * particles
 
         # Poisson shot noise
         image = (
@@ -157,7 +165,7 @@ class Simulator:
 
         start_frame = 0
         if video is None:
-            mask = random_mask()
+            mask = random_mask(config.shape)
         else:
             t_step = 1
             # Randomise the way the video is read
@@ -206,8 +214,15 @@ class Simulator:
                 config.global_motion.noise_theta,
             )
 
-        # Warmup
-        motion.warm_up(config.warm_up, particles, background)  # Update and apply motion
+        # Warmup and find gain as the max of 5 frames during the warmup
+        if background:
+            gain = background.draw_truth(scale=4).max().item()
+            for _ in range(5):
+                motion.warm_up(config.warm_up // 5, particles, background)  # Update and apply motion
+                background.build_distribution()
+                gain = max(background.draw_truth(scale=4).max().item(), gain)
+        else:
+            motion.warm_up(config.warm_up, particles, background)
 
         for _ in range(config.warm_up):
             emission_model.update()  # Update nam
@@ -220,7 +235,12 @@ class Simulator:
             if background:
                 global_motion.apply(background)
 
-        simulator = Simulator(particles, background, emission_model, motion, global_motion, config.imaging_config)
+        # Update distributions
+        particles.build_distribution()
+        if background:
+            background.build_distribution()
+
+        simulator = Simulator(particles, background, emission_model, motion, global_motion, config.imaging_config, gain)
         # True warm up, but expensive with Optical flow
         # for _ in tqdm.trange(config.warm_up, desc="Warming up"):
         #     simulator.update()

@@ -1,7 +1,7 @@
 __default__:
   - ./default.yml
 
-name: springs
+name: springs_2d
 
 
 simulator:  # Replace motion with springs motion + global drift

@@ -42,20 +42,19 @@ def main(name: str, cfg_data: dict) -> None:
     simulator = Simulator.from_config(cfg.simulator)
     recorder = Recorder(simulator.particles)
 
-    # Lets print the alpha used for the simulation (mixture coef between background and particles)
-    snr = 10 ** (cfg.simulator.imaging_config.psnr / 10)
-    alpha = (snr - 1) / (snr - 1 + 1 / 0.6)  # From simulator
-    print("Alpha:", alpha)
-
     # Find springs for display and save
     springs = None
     for motion in simulator.motion.motions:
         if isinstance(motion, ElasticMotion):
             springs = motion.spring
 
+    # Old writer
     # Create a VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
-    writer = cv2.VideoWriter("video.mp4", fourcc, 30, simulator.particles.size, isColor=False)
+    # fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
+    # writer = cv2.VideoWriter("video.mp4", fourcc, 30, simulator.particles.size, isColor=False)
+
+    # 2D/3D compatible write with tiff, but we need to allocate the full video
+    video = np.zeros((cfg.n_frames, *cfg.simulator.shape), dtype=np.uint8)
 
     frame_saved = False
     k = 0
@@ -64,17 +63,18 @@ def main(name: str, cfg_data: dict) -> None:
             frame_saved = False
             frame = simulator.generate_image().numpy()
             segmentation = simulator.particles.get_tracks_segmentation().numpy().astype(np.uint16)
-            # Add axes to match imagej tiff default format: TZCYX
+            # Add axes to match imagej tiff default format: TZCYXS
             if segmentation.ndim == 2:
                 segmentation = segmentation[None, None, None, ..., None]
             else:
                 segmentation = segmentation[None, :, None, ..., None]
 
-            writer.write((frame * 255).astype(np.uint8))
+            # writer.write((frame * 255).astype(np.uint8))
+            video[k] = (frame * 255).round().astype(np.uint8)
             tifffile.imwrite(f"tracks/{k:04}.tiff", segmentation, imagej=True)
             frame_saved = True
 
-            if cfg.display:
+            if cfg.display and frame.ndim == 2:
                 if springs:  # Display also the springs
                     points = springs.points
                     if simulator.global_motion:
@@ -90,6 +90,11 @@ def main(name: str, cfg_data: dict) -> None:
             recorder.update()
 
     finally:
+        if video.ndim == 3:
+            tifffile.imwrite("video.tiff", video[: k + frame_saved, None, None, ..., None], imagej=True)  # TZCYXS
+        else:
+            tifffile.imwrite("video.tiff", video[: k + frame_saved, :, None, ..., None], imagej=True)  # TZCYXS
+
         torch.save(
             {
                 "mu": recorder.mu[: k + frame_saved],
@@ -104,10 +109,10 @@ def main(name: str, cfg_data: dict) -> None:
         np.savetxt("weights.txt", recorder.weight[: k + frame_saved].numpy(), fmt="%.4f", encoding="utf-8")
 
         cv2.destroyAllWindows()
-        writer.release()
+        # writer.release()
 
         # Copy the useful data to the dataset folder
-        shutil.copy("video.mp4", dataset_path / "video.mp4")
+        shutil.copy("video.tiff", dataset_path / "video.tiff")
         shutil.copy("video_data.pt", dataset_path / "video_data.pt")
         shutil.copy("weights.txt", dataset_path / "weights.txt")
         shutil.copytree("tracks", dataset_path / "tracks")

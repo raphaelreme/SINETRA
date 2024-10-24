@@ -26,5 +26,5 @@ simulator:
         contraction:
           motion_rate: 40.0
           motion_size: 10
-          amplitude: 30.0
+          amplitude: 30.0  # times w0 ~ 0.125 to get the real amplitude in pixels: ~ 4pixels
           noise: 0.0

@@ -48,10 +48,12 @@ class ZephIRLinker(byotrack.Linker):
     the detections on the most recommended frame as annotation.)
     """
 
-    def __init__(self, specs: ZephIRParameters, dataset: pathlib.Path, num_annotated_frames=1, verbose=False):
+    def __init__(
+        self, specs: ZephIRParameters, dataset: pathlib.Path, num_annotated_frames=1, device="cpu", verbose=False
+    ):
         super().__init__()
         self.dataset = dataset
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = device
         self.specs = specs
         self.verbose = verbose
 
@@ -68,6 +70,7 @@ class ZephIRLinker(byotrack.Linker):
         )
 
     def run(self, video, detections_sequence):
+        dim = detections_sequence[0].dim
         # defining variable container with some key arguments
         container = Container(
             dataset=self.dataset,
@@ -96,8 +99,8 @@ class ZephIRLinker(byotrack.Linker):
         container, zephir, _ = build_models(
             container=container,
             dimmer_ratio=0.1,
-            grid_shape=(1, self.specs.grid_step, self.specs.grid_step),
-            fovea_sigma=(1, 2.5, 2.5),
+            grid_shape=(1 if dim == 2 else self.specs.grid_step, self.specs.grid_step, self.specs.grid_step),
+            fovea_sigma=(1 if dim == 2 else self.specs.grid_step, 2.5, 2.5),
             n_chunks=1,
         )
 
@@ -114,7 +117,7 @@ class ZephIRLinker(byotrack.Linker):
             container=container,
             sort_mode=self.specs.sort_mode,
             t_ignore=None,
-            t_track=list(range(0, container.metadata["shape_t"])),
+            t_track=list(range(0, len(video))),
             verbose=False,
         )
 
@@ -161,6 +164,5 @@ class ZephIRConfig(ZephIRParameters):
     num_annotated_frames: int = 1
 
     def build(self) -> ZephIRLinker:
-        linker = ZephIRLinker(self, self.dataset, self.num_annotated_frames)
-        linker.device = self.device
+        linker = ZephIRLinker(self, self.dataset, self.num_annotated_frames, self.device)
         return linker
