@@ -4,7 +4,7 @@ __default__:
   - ./simulator/default.yml
 
 __run__:
-  __main__: neuro_track.main:main
+  __main__: sinetra.main:main
   __name__: "{name}/{simulator.imaging_config.alpha}-{simulator.imaging_config.delta}/{seed}"
   __output_dir__: experiment_folder/dataset
 

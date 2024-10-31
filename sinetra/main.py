@@ -10,10 +10,10 @@ import torch
 import tqdm  # type: ignore
 import yaml  # type: ignore
 
-from neuro_track.motion import ElasticMotion
-from neuro_track.particle import Recorder
-from neuro_track.random import enforce_all_seeds
-from neuro_track.simulator import Simulator, SimulatorConfig
+from sinetra.motion import ElasticMotion
+from sinetra.particle import Recorder
+from sinetra.random import enforce_all_seeds
+from sinetra.simulator import Simulator, SimulatorConfig
 
 
 @dataclasses.dataclass
