@@ -26,7 +26,7 @@ class OpticalFlowConfig:
 
     name: str = "farneback"
     downscale: int = 4
-    farneback: FarnebackConfig = FarnebackConfig()
+    farneback: FarnebackConfig = dataclasses.field(default_factory=FarnebackConfig)
 
     def build(self) -> byotrack.OpticalFlow:
         if self.name.lower() == "farneback":

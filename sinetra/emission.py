@@ -20,7 +20,7 @@ class EmissionConfig:
     """Parameters for EmissionModel"""
 
     mode: str = "constant"
-    nam: NamConfig = NamConfig()
+    nam: NamConfig = dataclasses.field(default_factory=NamConfig)
 
     def build(self, particles: particle.GaussianParticles) -> EmissionModel:
         if self.mode.lower() == "nam":

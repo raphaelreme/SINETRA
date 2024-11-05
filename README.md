@@ -16,7 +16,7 @@ First clone the repository and submodules
 $ git clone git@github.com:raphaelreme/SINETRA.git
 $ cd SINETRA
 $ git submodule init
-$ git submodule update
+$ git submodule update  # It requires to connect with ssh to github
 ```
 
 Install requirements
@@ -38,6 +38,8 @@ To download the Hydra video that we use in the paper, you can run:
 ```bash
 $ bash scripts/download_hydra_video.sh  # Or download manually from https://partage.imt.fr/index.php/s/bgCFszkzYGFWgAz
 ```
+
+See the `Troubleshooting` section for more informations on fixing your installation.
 
 ## Dataset
 
@@ -120,7 +122,7 @@ for segmentation in segmentation_video:
 We provide scripts to generate the same dataset that we used and run the same experiments
 
 ```bash
-$ python scripts/paper_dataset.py  # Generate the dataset
+$ python scripts/paper_dataset.py  # Generate the dataset (Replace the older one if already generated)
 $ python scripts/paper_track.py  # Launch tracks experiments
 $ python scripts/aggregate_results.py  # Check tracking results
 ```
@@ -281,3 +283,19 @@ For instance, this would create a dataset based on the `springs_2d` configuratio
 $ # The video and tracks are stored in dataset/my_new_dataset/666
 $ expyrun configs/dataset/springs_2d.yml --name my_new_dataset --seed 666 --simulator.shape 500,700
 ```
+
+## Troubleshooting
+
+The code was developped on Ubuntu with conda and python=3.10 (but it should work on any platform/recent python version). Please raise an issue if the code is not working on your particular case.
+
+If you face an error, we advise to run the following commands to better see the logs (instead of the provided `scripts`):
+
+```bash
+$ # To test the simulator  (It will try (re)generate dataset/springs_2d/111)
+$ expyrun configs/dataset/springs_2d.yml  # You can try to generate hydra_flow.yml or springs_3d.yml instead of springs_2d.yml
+$
+$ # For the tracking experiments
+$ expyrun configs/tracking/track.yml --tracking_method koft  # You can try each tracking method one by one (koft, trackmate, emht, zephir)
+```
+
+If you face warnings from pytorch or numba (or other external dependencies), try to fix the warnings, it may solve most of your issues.

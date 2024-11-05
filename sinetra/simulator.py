@@ -50,7 +50,7 @@ class VideoConfig:
     step: int = 1
     randomise: bool = False
 
-    transform: byotrack.VideoTransformConfig = byotrack.VideoTransformConfig()
+    transform: byotrack.VideoTransformConfig = dataclasses.field(default_factory=byotrack.VideoTransformConfig)
 
     def open(self) -> Optional[byotrack.Video]:
         if self.path == "":

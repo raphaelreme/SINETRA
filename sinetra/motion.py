@@ -65,7 +65,7 @@ class FlowMotionConfig:
 
     algorithm: str = "farneback"
     downscale: int = 4
-    farneback: optical_flow.FarnebackConfig = optical_flow.FarnebackConfig()
+    farneback: optical_flow.FarnebackConfig = dataclasses.field(default_factory=optical_flow.FarnebackConfig)
 
     def build(self, **kwargs) -> "FlowMotion":
         assert kwargs.get("video"), "Unable to create a flow motion without a true video input"
@@ -101,7 +101,7 @@ class ElasticNoiseConfig:
     """
 
     name: str = "contraction"
-    contraction: RandomContractionConfig = RandomContractionConfig()
+    contraction: RandomContractionConfig = dataclasses.field(default_factory=RandomContractionConfig)
 
     def build(self):
         if self.name.lower() == "contraction":
@@ -129,7 +129,7 @@ class ElasticMotionConfig:
     alpha: float = 10.0
     period: float = 50.0
     grid_step: int = 100
-    noise: ElasticNoiseConfig = ElasticNoiseConfig()
+    noise: ElasticNoiseConfig = dataclasses.field(default_factory=ElasticNoiseConfig)
 
     def build(self, **kwargs) -> "ElasticMotion":
         points, neighbors = springs.RandomRelationalSprings.grid_springs_from_mask(kwargs["mask"], self.grid_step)
@@ -149,11 +149,11 @@ class MotionConfig:
     """
 
     motions: List[str]
-    shape_variation: ShapeVariationConfig = ShapeVariationConfig()
-    local_rotation: LocalRotationConfig = LocalRotationConfig()
-    brownian_rotation: BrownianRotationConfig = BrownianRotationConfig()
-    flow_motion: FlowMotionConfig = FlowMotionConfig()
-    elastic_motion: ElasticMotionConfig = ElasticMotionConfig()
+    shape_variation: ShapeVariationConfig = dataclasses.field(default_factory=ShapeVariationConfig)
+    local_rotation: LocalRotationConfig = dataclasses.field(default_factory=LocalRotationConfig)
+    brownian_rotation: BrownianRotationConfig = dataclasses.field(default_factory=BrownianRotationConfig)
+    flow_motion: FlowMotionConfig = dataclasses.field(default_factory=FlowMotionConfig)
+    elastic_motion: ElasticMotionConfig = dataclasses.field(default_factory=ElasticMotionConfig)
 
     def build(self, **kwargs) -> "MultipleMotion":
         motions = []

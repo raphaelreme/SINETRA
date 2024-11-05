@@ -44,8 +44,8 @@ class OpticalFlowConfig:
 
     name: str = "farneback"
     downscale: int = 4
-    farneback: FarnebackConfig = FarnebackConfig()
-    tvl1: TVL1Config = TVL1Config()
+    farneback: FarnebackConfig = dataclasses.field(default_factory=FarnebackConfig)
+    tvl1: TVL1Config = dataclasses.field(default_factory=TVL1Config)
 
     def build(self) -> byotrack.OpticalFlow:
         if self.name.lower() == "farneback":
@@ -60,7 +60,7 @@ class OpticalFlowConfig:
 class KOFTConfig(koft.KOFTLinkerParameters):
     """Configuration for KOFT algorithm"""
 
-    optical_flow: OpticalFlowConfig = OpticalFlowConfig()
+    optical_flow: OpticalFlowConfig = dataclasses.field(default_factory=OpticalFlowConfig)
 
     def build(self) -> koft.KOFTLinker:
         return koft.KOFTLinker(self, self.optical_flow.build())

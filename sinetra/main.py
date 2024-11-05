@@ -1,6 +1,7 @@
 import dataclasses
 import pathlib
 import shutil
+import warnings
 
 import cv2
 import dacite
@@ -35,6 +36,10 @@ def main(name: str, cfg_data: dict) -> None:
     pathlib.Path("tracks").mkdir()
 
     dataset_path = cfg.dataset_path / name
+    if dataset_path.exists():
+        warnings.warn("This dataset was already generated, it will be removed and replaced")
+        shutil.rmtree(dataset_path)
+
     dataset_path.mkdir(parents=True, exist_ok=False)
 
     enforce_all_seeds(cfg.seed)
