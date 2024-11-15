@@ -2,7 +2,7 @@
 
 ![sinetra](simulation.gif)
 
-Code for the paper "SINETRA: a versatile framework for evaluating single neuron tracking in behaving animals", submitted at ISBI2025.
+Code of the [paper](https://arxiv.org/abs/2411.09462) "SINETRA: a versatile framework for evaluating single neuron tracking in behaving animals", submitted at ISBI2025.
 
 In this repository, you will find the `sinetra` python package that implements the simulator describe in the paper and the `tracking_src` python package that runs the tracking experiments done in the paper with the synthetic data.
 
@@ -299,3 +299,19 @@ $ expyrun configs/tracking/track.yml --tracking_method koft  # You can try each 
 ```
 
 If you face warnings from pytorch or numba (or other external dependencies), try to fix the warnings, it may solve most of your issues.
+
+## Cite us
+
+If you use this work, please cite our [preprint](https://arxiv.org/abs/2411.09462):
+
+```bibtex
+@misc{reme2024sinetraversatileframeworkevaluating,
+      title={SINETRA: a Versatile Framework for Evaluating Single Neuron Tracking in Behaving Animals},
+      author={Raphael Reme and Alasdair Newson and Elsa Angelini and Jean-Christophe Olivo-Marin and Thibault Lagache},
+      year={2024},
+      eprint={2411.09462},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2411.09462},
+}
+```
