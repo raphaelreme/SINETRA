@@ -28,7 +28,7 @@ $ # If you want to run ZephIR experiments
 $ # pip install -r ZephIR/requirements.txt
 ```
 
-Additional requirements (Icy, Fiji) are needed to reproduce some tracking experiemnts. See the installation guidelines of [ByoTrack](https://github.com/raphaelreme/byotrack) for a complete installation.
+Additional requirements (Icy, Fiji) are needed to reproduce some tracking experiments. See the installation guidelines of [ByoTrack](https://github.com/raphaelreme/byotrack) for a complete installation.
 
 The experiment configuration files are using environment variables that needs to be set:
 - $ICY: path to icy.jar
