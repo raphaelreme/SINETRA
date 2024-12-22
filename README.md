@@ -1,4 +1,5 @@
 # SINETRA: SIngle NEuron TRAcking synthetic dataset
+[![Lint and Test](https://github.com/raphaelreme/sinetra/actions/workflows/tests.yml/badge.svg)](https://github.com/raphaelreme/sinetra/actions/workflows/tests.yml)
 
 ![sinetra](simulation.gif)
 
@@ -40,6 +41,12 @@ $ bash scripts/download_hydra_video.sh  # Or download manually from https://part
 ```
 
 See the `Troubleshooting` section for more informations on fixing your installation.
+
+For users that only want to generate tracking data, we deployed the `sinetra` package. It allows to use the `Simulator` class or `main` function to generate the data from python directly in another project (for instance for very long video, one could create the video frame by frame and do the tracking at the same time, without storing the data). It can be installed with
+
+```bash
+$ pip install sinetra
+```
 
 ## Dataset
 

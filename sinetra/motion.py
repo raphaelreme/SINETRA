@@ -136,7 +136,9 @@ class ElasticMotionConfig:
         quality = torch.tensor([0.5])
         w0 = torch.tensor([2 * torch.pi / self.period])
         random_accelerator = self.noise.build()
-        spring = springs.RandomRelationalSprings(points, neighbors, w0**2, w0 / quality, random_accelerator)
+        spring = springs.RandomRelationalSprings(
+            points, neighbors, w0**2, w0 / quality, random_accelerator=random_accelerator
+        )
         return ElasticMotion(spring, self.alpha)
 
 
@@ -331,7 +333,7 @@ class FlowMotion(BaseMotion):
     def apply(self, particles: GaussianParticles) -> None:
         particles.mu = torch.tensor(self.optflow.transform(self.flow, particles.mu.numpy())).to(torch.float32)
 
-    def warm_up(self, warm_up: int, particles: GaussianParticles, background: GaussianParticles | None) -> None:
+    def warm_up(self, warm_up: int, particles: GaussianParticles, background: Optional[GaussianParticles]) -> None:
         pass  # No warmup with optical flow
 
 
@@ -356,6 +358,8 @@ class ElasticMotion(BaseMotion):
 
 @dataclasses.dataclass
 class GlobalMotionConfig:
+    """Configuration for the global affine motions"""
+
     period: float = 1000.0
     noise_position: float = 0.0
     noise_theta: float = 0.0

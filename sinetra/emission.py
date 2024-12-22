@@ -69,10 +69,12 @@ class NeuronalActivityModel(EmissionModel):  # pylint: disable=too-few-public-me
 
     """
 
+    # pylint: disable=invalid-name
     MAX_WEIGHT = 2
     MIN_WEIGHT = 0.1  # Minimal baseline for particles
     FIRING_GAIN = 1.0
     SMOOTHING_DECAY = 0.75  # EMA factor to prevent hard firings
+    # pylint: enable=invalid-name
 
     def __init__(self, particles: particle.GaussianParticles, firing_rate=0.01, decay=0.95):
         super().__init__(particles)

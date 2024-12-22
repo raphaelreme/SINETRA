@@ -331,6 +331,7 @@ class RandomRelationalSprings:
         neighbors: torch.Tensor,
         k: torch.Tensor,
         lambda_: torch.Tensor,
+        *,
         random_accelerator: Callable[["RandomRelationalSprings", float], torch.Tensor] = no_acceleration,
     ):
         # Check size

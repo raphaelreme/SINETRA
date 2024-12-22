@@ -205,13 +205,17 @@ good-names=i,
            j,
            k,
            n,
+           m,
            ex,
            Run,
            _,
            x,
            y,
            z,
-           mu
+           t,
+           mu,
+           w0,
+           dt
 
 # Good variable names regexes, separated by a comma. If names match any regex,
 # they will always be accepted
@@ -541,5 +545,5 @@ min-public-methods=2
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "BaseException, Exception".
-overgeneral-exceptions=BaseException,
-                       Exception
+overgeneral-exceptions=builtins.BaseException,
+                       builtins.Exception

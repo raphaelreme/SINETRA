@@ -88,11 +88,12 @@ class Simulator:
     def __init__(
         self,
         particles: GaussianParticles,
-        background: Optional[GaussianParticles],
-        emission_model: EmissionModel,
         motion: MultipleMotion,
-        global_motion: Optional[GlobalDriftAndRotation],
         imaging_config: ImagingConfig,
+        *,
+        background: Optional[GaussianParticles] = None,
+        emission_model: Optional[EmissionModel] = None,
+        global_motion: Optional[GlobalDriftAndRotation] = None,
         background_gain: Optional[float] = None,
     ):
         self.particles = particles
@@ -137,7 +138,9 @@ class Simulator:
         return image
 
     def update(self):
-        self.emission_model.update()
+        if self.emission_model is not None:
+            self.emission_model.update()
+
         self.motion.update()
 
         if self.global_motion:
@@ -160,7 +163,7 @@ class Simulator:
             self.background.build_distribution()
 
     @staticmethod
-    def from_config(config: SimulatorConfig) -> "Simulator":
+    def from_config(config: SimulatorConfig) -> "Simulator":  # pylint: disable=too-many-branches
         video = config.base_video.open()
 
         start_frame = 0
@@ -240,7 +243,15 @@ class Simulator:
         if background:
             background.build_distribution()
 
-        simulator = Simulator(particles, background, emission_model, motion, global_motion, config.imaging_config, gain)
+        simulator = Simulator(
+            particles,
+            motion,
+            config.imaging_config,
+            background=background,
+            emission_model=emission_model,
+            global_motion=global_motion,
+            background_gain=gain,
+        )
         # True warm up, but expensive with Optical flow
         # for _ in tqdm.trange(config.warm_up, desc="Warming up"):
         #     simulator.update()

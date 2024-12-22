@@ -231,8 +231,14 @@ def torch_gmm_pdf(
 
 
 @numba.njit(parallel=True)
-def numba_gmm_pdf_2d(
-    shape: Tuple[int, int], mu: np.ndarray, precision: np.ndarray, weight: np.ndarray, thresholds: np.ndarray, scale=1
+def numba_gmm_pdf_2d(  # pylint: disable=too-many-locals
+    shape: Tuple[int, int],
+    mu: np.ndarray,
+    precision: np.ndarray,
+    weight: np.ndarray,
+    thresholds: np.ndarray,
+    *,
+    scale=1,
 ) -> np.ndarray:
     """Fast computation of the GMM pdf given mu, sigma_inv and weights
 
@@ -298,12 +304,13 @@ def numba_gmm_pdf_2d(
 
 
 @numba.njit(parallel=True)
-def numba_gmm_pdf_3d(
+def numba_gmm_pdf_3d(  # pylint: disable=too-many-locals
     shape: Tuple[int, int, int],
     mu: np.ndarray,
     precision: np.ndarray,
     weight: np.ndarray,
     thresholds: np.ndarray,
+    *,
     scale=1,
 ) -> np.ndarray:
     """3d version of the numba_gmm_pdf_2d
@@ -361,7 +368,7 @@ def numba_gmm_pdf_3d(
 
 
 @numba.njit(parallel=True)
-def _fast_segmentation_2d(
+def _fast_segmentation_2d(  # pylint: disable=too-many-locals
     shape: Tuple[int, int],
     mu: np.ndarray,
     precision: np.ndarray,
@@ -421,7 +428,7 @@ def _fast_segmentation_2d(
 
 
 @numba.njit(parallel=True)
-def _fast_segmentation_3d(
+def _fast_segmentation_3d(  # pylint: disable=too-many-locals
     shape: Tuple[int, int, int],
     mu: np.ndarray,
     precision: np.ndarray,

@@ -6,7 +6,7 @@ import warnings
 import cv2
 import dacite
 import numpy as np
-import tifffile
+import tifffile  # type: ignore
 import torch
 import tqdm  # type: ignore
 import yaml  # type: ignore
@@ -28,7 +28,7 @@ class MainConfig:
     dataset_path: pathlib.Path
 
 
-def main(name: str, cfg_data: dict) -> None:
+def main(name: str, cfg_data: dict) -> None:  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     print("Running:", name)
     print(yaml.dump(cfg_data))
     cfg = dacite.from_dict(MainConfig, cfg_data, dacite.Config(cast=[pathlib.Path, tuple]))

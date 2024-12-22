@@ -71,7 +71,7 @@ def main(name: str, cfg_data: dict) -> None:
     video = data.open_video(cfg.data)[: cfg.num_frames]
     ground_truth = data.load_ground_truth(cfg.data)
     ground_truth["mu"] = ground_truth["mu"][: cfg.num_frames]
-    ground_truth["weight"] = ground_truth["weight"][:, cfg.num_frames]
+    ground_truth["weight"] = ground_truth["weight"][: cfg.num_frames]
 
     # Detections
     detector = cfg.detection.create_detector(ground_truth["mu"])
