@@ -26,6 +26,7 @@ class MainConfig:
     display: bool
     simulator: SimulatorConfig
     dataset_path: pathlib.Path
+    format: str = "full"  # Generates annotations as .pt and .tiff
 
 
 def main(name: str, cfg_data: dict) -> None:  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
@@ -67,16 +68,18 @@ def main(name: str, cfg_data: dict) -> None:  # pylint: disable=too-many-locals,
         for k in tqdm.trange(cfg.n_frames):
             frame_saved = False
             frame = simulator.generate_image().numpy()
-            segmentation = simulator.particles.get_tracks_segmentation().numpy().astype(np.uint16)
-            # Add axes to match imagej tiff default format: TZCYXS
-            if segmentation.ndim == 2:
-                segmentation = segmentation[None, None, None, ..., None]
-            else:
-                segmentation = segmentation[None, :, None, ..., None]
+            if cfg.format == "full":
+                segmentation = simulator.particles.get_tracks_segmentation().numpy().astype(np.uint16)
+                # Add axes to match imagej tiff default format: TZCYXS
+                if segmentation.ndim == 2:
+                    segmentation = segmentation[None, None, None, ..., None]
+                else:
+                    segmentation = segmentation[None, :, None, ..., None]
+
+                tifffile.imwrite(f"tracks/{k:04}.tiff", segmentation, imagej=True)
 
             # writer.write((frame * 255).astype(np.uint8))
             video[k] = (frame * 255).round().astype(np.uint8)
-            tifffile.imwrite(f"tracks/{k:04}.tiff", segmentation, imagej=True)
             frame_saved = True
 
             if cfg.display and frame.ndim == 2:
@@ -109,9 +112,11 @@ def main(name: str, cfg_data: dict) -> None:  # pylint: disable=too-many-locals,
             },
             "video_data.pt",
         )
-        # Save the weights in a readable format for anyone
-        # (The segmentation is already saved in tiff)
-        np.savetxt("weights.txt", recorder.weight[: k + frame_saved].numpy(), fmt="%.4f", encoding="utf-8")
+
+        if cfg.format == "full":
+            # Save the weights in a readable format for anyone
+            # (The segmentation is already saved in tiff)
+            np.savetxt("weights.txt", recorder.weight[: k + frame_saved].numpy(), fmt="%.4f", encoding="utf-8")
 
         cv2.destroyAllWindows()
         # writer.release()
@@ -119,5 +124,7 @@ def main(name: str, cfg_data: dict) -> None:  # pylint: disable=too-many-locals,
         # Copy the useful data to the dataset folder
         shutil.copy("video.tiff", dataset_path / "video.tiff")
         shutil.copy("video_data.pt", dataset_path / "video_data.pt")
-        shutil.copy("weights.txt", dataset_path / "weights.txt")
-        shutil.copytree("tracks", dataset_path / "tracks")
+
+        if cfg.format == "full":
+            shutil.copy("weights.txt", dataset_path / "weights.txt")
+            shutil.copytree("tracks", dataset_path / "tracks")
