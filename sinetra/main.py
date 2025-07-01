@@ -76,7 +76,7 @@ def main(name: str, cfg_data: dict) -> None:  # pylint: disable=too-many-locals,
                 else:
                     segmentation = segmentation[None, :, None, ..., None]
 
-                tifffile.imwrite(f"tracks/{k:04}.tiff", segmentation, imagej=True)
+                tifffile.imwrite(f"tracks/{k:04}.tiff", segmentation, imagej=True, compression="zlib")
 
             # writer.write((frame * 255).astype(np.uint8))
             video[k] = (frame * 255).round().astype(np.uint8)
