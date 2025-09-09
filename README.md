@@ -309,16 +309,15 @@ If you face warnings from pytorch or numba (or other external dependencies), try
 
 ## Cite us
 
-If you use this work, please cite our [preprint](https://arxiv.org/abs/2411.09462):
+If you use this work, please cite our [paper](https://ieeexplore.ieee.org/abstract/document/10981111):
 
 ```bibtex
-@misc{reme2024sinetraversatileframeworkevaluating,
-      title={SINETRA: a Versatile Framework for Evaluating Single Neuron Tracking in Behaving Animals},
-      author={Raphael Reme and Alasdair Newson and Elsa Angelini and Jean-Christophe Olivo-Marin and Thibault Lagache},
-      year={2024},
-      eprint={2411.09462},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2411.09462},
+@inproceedings{reme2025sinetra,
+  title={SINETRA: A Versatile Framework for Evaluating Single Neuron Tracking in Behaving Animals},
+  author={Reme, Raphael and Newson, Alasdair and Angelini, Elsa and Olivo-Marin, Jean-Christophe and Lagache, Thibault},
+  booktitle={2025 IEEE 22nd International Symposium on Biomedical Imaging (ISBI)},
+  pages={1--5},
+  year={2025},
+  organization={IEEE}
 }
 ```
