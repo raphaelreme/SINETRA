@@ -37,7 +37,7 @@ The experiment configuration files are using environment variables that needs to
 
 To download the Hydra video that we use in the paper, you can run:
 ```bash
-$ bash scripts/download_hydra_video.sh  # Or download manually from https://partage.imt.fr/index.php/s/bgCFszkzYGFWgAz
+$ bash scripts/download_hydra_video.sh  # Or download manually from https://github.com/raphaelreme/SINETRA/releases/dupre_data
 ```
 
 See the `Troubleshooting` section for more informations on fixing your installation.
